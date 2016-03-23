@@ -65,19 +65,20 @@ def wait_for(p, match):
 
 
 def run(rdm, project_dir, test_dir, test_files, rc_command, expected_locations):
-    print 'running test'
     actual_locations = \
         read_locations(project_dir,
                        run_rc([c.format(test_dir) for c in rc_command]))
+    print 'checking locations'
     # Compare that we have the same results in length and content
     assert_that(actual_locations, has_length(len(expected_locations)))
-    print 'checking location'
     for expected_location_string in expected_locations:
         expected_location = Location.from_str(expected_location_string.format(test_dir))
+        print 'checking location'
         assert_that(actual_locations, has_item(expected_location))
+    print 'done'
 
 def setup_rdm(test_dir, test_files):
-    rdm = sp.Popen(["rdm", "-n", socket_file, "-d", "~/.rtags_dev", "-o", "-B", "-C"],
+    rdm = sp.Popen(["rdm", "-v", "-n", socket_file, "-d", "~/.rtags_dev", "-o", "-B", "-C"],
                    stdout=sp.PIPE, stderr=sp.STDOUT)
     wait_for(rdm, "Includepaths")
 
@@ -93,12 +94,12 @@ def test_generator():
     for test_dir, _, test_files in tuple(os.walk(base_test_dir))[1:]:
         print 'Test directory:',test_dir
         print 'Test files:',test_files
-        if "ForwardDeclaration" in test_dir:
-          continue
         expectations = json.load(open(os.path.join(test_dir, "expectation.json"), 'r'))
         rdm = setup_rdm(test_dir, test_files)
         for e in expectations:
             test_generator.__name__ = os.path.basename(test_dir)
             yield run, rdm, project_dir, test_dir, test_files, e["rc-command"], e["expectation"]
         rdm.terminate()
+        print 'waiting for rdm to terminate'
         rdm.wait()
+        print 'rdm terminated'
